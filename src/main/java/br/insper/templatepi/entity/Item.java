@@ -5,6 +5,8 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import lombok.Getter;
@@ -31,8 +33,22 @@ public class Item {
 	@Column(nullable = false, length = 1000)
 	private String descricao;
 
-	@Column(nullable = false)
+	@Enumerated(EnumType.STRING)
+	@Column(nullable = false, length = 20)
+	private TipoItem tipo;
+
 	private Integer quantidade;
+
+	@Column(length = 500)
+	private String urlAcesso;
+
+	private Integer duracaoMinutos;
+
+	@Enumerated(EnumType.STRING)
+	@Column(nullable = false, length = 20)
+	private StatusItem status;
+
+	private LocalDateTime dataProcessamento;
 
 	@Column(nullable = false)
 	private boolean deletado;
@@ -40,10 +56,20 @@ public class Item {
 	@Column(nullable = false, updatable = false)
 	private LocalDateTime dataCriacao;
 
-	public Item(String nome, String descricao, Integer quantidade) {
+	public Item(
+			String nome,
+			String descricao,
+			TipoItem tipo,
+			Integer quantidade,
+			String urlAcesso,
+			Integer duracaoMinutos) {
 		this.nome = nome;
 		this.descricao = descricao;
+		this.tipo = tipo;
 		this.quantidade = quantidade;
+		this.urlAcesso = urlAcesso;
+		this.duracaoMinutos = duracaoMinutos;
+		this.status = StatusItem.PENDENTE;
 		this.deletado = false;
 	}
 

@@ -2,6 +2,7 @@ package br.insper.templatepi.controller;
 
 import br.insper.templatepi.dto.ItemRequest;
 import br.insper.templatepi.dto.ItemResponse;
+import br.insper.templatepi.dto.ProcessamentoItemResponse;
 import br.insper.templatepi.service.ItemService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -43,5 +44,10 @@ public class ItemController {
 	@ResponseStatus(HttpStatus.NO_CONTENT)
 	public void deletar(@PathVariable Long id) {
 		itemService.deletar(id);
+	}
+
+	@PostMapping("/{id}/processar")
+	public ProcessamentoItemResponse processar(@PathVariable Long id) {
+		return itemService.processar(id);
 	}
 }

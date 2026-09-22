@@ -2,16 +2,23 @@ package br.insper.templatepi.service;
 
 import br.insper.templatepi.dto.ItemRequest;
 import br.insper.templatepi.dto.ItemResponse;
+import br.insper.templatepi.dto.ProcessamentoItemResponse;
 import br.insper.templatepi.entity.Item;
+import br.insper.templatepi.entity.StatusItem;
+import br.insper.templatepi.entity.TipoItem;
 import br.insper.templatepi.exception.ItemNaoEncontradoException;
+import br.insper.templatepi.observer.ItemObserver;
+import br.insper.templatepi.processor.ProcessadorItem;
+import br.insper.templatepi.processor.ProcessadorItemFactory;
 import br.insper.templatepi.repository.ItemRepository;
+import br.insper.templatepi.validator.ValidadorItem;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -32,12 +39,41 @@ class ItemServiceTest {
 	@Mock
 	private ItemRepository itemRepository;
 
-	@InjectMocks
+	@Mock
+	private ValidadorItem validadorItem;
+
+	@Mock
+	private ProcessadorItemFactory processadorFactory;
+
+	@Mock
+	private ProcessadorItem processador;
+
+	@Mock
+	private ItemObserver observer;
+
 	private ItemService itemService;
 
+	@BeforeEach
+	void configurarService() {
+		itemService = new ItemService(
+				itemRepository,
+				validadorItem,
+				processadorFactory,
+				List.of(observer)
+		);
+	}
+
 	@Test
-	void deveCriarItemComTextoNormalizado() {
+	void deveCriarItemDigitalComTextoNormalizado() {
 		LocalDateTime dataCriacao = LocalDateTime.of(2026, 9, 22, 12, 0);
+		ItemRequest request = new ItemRequest(
+				"  Item de exemplo  ",
+				"  Descrição do item  ",
+				TipoItem.DIGITAL,
+				null,
+				"  https://exemplo.com/item  ",
+				null
+		);
 		when(itemRepository.save(any(Item.class))).thenAnswer(invocation -> {
 			Item item = invocation.getArgument(0);
 			item.setId(1L);
@@ -45,24 +81,39 @@ class ItemServiceTest {
 			return item;
 		});
 
-		ItemResponse response = itemService.criar(new ItemRequest(
-				"  Item de exemplo  ",
-				"  Descrição do item  ",
-				10
-		));
+		ItemResponse response = itemService.criar(request);
 
 		ArgumentCaptor<Item> captor = ArgumentCaptor.forClass(Item.class);
+		verify(validadorItem).validar(request);
 		verify(itemRepository).save(captor.capture());
 		Item salvo = captor.getValue();
 		assertThat(salvo.getNome()).isEqualTo("Item de exemplo");
 		assertThat(salvo.getDescricao()).isEqualTo("Descrição do item");
-		assertThat(salvo.getQuantidade()).isEqualTo(10);
+		assertThat(salvo.getTipo()).isEqualTo(TipoItem.DIGITAL);
+		assertThat(salvo.getUrlAcesso()).isEqualTo("https://exemplo.com/item");
+		assertThat(salvo.getStatus()).isEqualTo(StatusItem.PENDENTE);
 		assertThat(salvo.isDeletado()).isFalse();
 		assertThat(response.getId()).isEqualTo(1L);
-		assertThat(response.getNome()).isEqualTo("Item de exemplo");
-		assertThat(response.getDescricao()).isEqualTo("Descrição do item");
-		assertThat(response.getQuantidade()).isEqualTo(10);
+		assertThat(response.getStatus()).isEqualTo(StatusItem.PENDENTE);
 		assertThat(response.getDataCriacao()).isEqualTo(dataCriacao);
+		verify(observer).atualizar(salvo, null, StatusItem.PENDENTE);
+	}
+
+	@Test
+	void devePreservarUrlNulaAoCriarItemFisico() {
+		ItemRequest request = new ItemRequest(
+				"Item físico",
+				"Descrição",
+				TipoItem.FISICO,
+				10,
+				null,
+				null
+		);
+		when(itemRepository.save(any(Item.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+		ItemResponse response = itemService.criar(request);
+
+		assertThat(response.getUrlAcesso()).isNull();
 	}
 
 	@ParameterizedTest
@@ -129,8 +180,49 @@ class ItemServiceTest {
 		verify(itemRepository).findByIdAndDeletadoFalse(99L);
 	}
 
+	@Test
+	void deveProcessarItemComStrategySelecionadaPelaFactory() {
+		Item item = item(4L, "Item processável");
+		when(itemRepository.findByIdAndDeletadoFalse(4L)).thenReturn(Optional.of(item));
+		when(processadorFactory.obter(TipoItem.FISICO)).thenReturn(processador);
+		when(processador.processar(item)).thenReturn("Item processado");
+		when(itemRepository.save(item)).thenReturn(item);
+
+		ProcessamentoItemResponse response = itemService.processar(4L);
+
+		assertThat(response.isSucesso()).isTrue();
+		assertThat(response.getMensagem()).isEqualTo("Item processado");
+		assertThat(response.getItem().getStatus()).isEqualTo(StatusItem.PROCESSADO);
+		assertThat(response.getItem().getDataProcessamento()).isNotNull();
+		verify(observer).atualizar(item, StatusItem.PENDENTE, StatusItem.PROCESSADO);
+	}
+
+	@Test
+	void deveRegistrarFalhaQuandoStrategyLancaExcecao() {
+		Item item = item(5L, "Item com falha");
+		when(itemRepository.findByIdAndDeletadoFalse(5L)).thenReturn(Optional.of(item));
+		when(processadorFactory.obter(TipoItem.FISICO)).thenReturn(processador);
+		when(processador.processar(item)).thenThrow(new IllegalStateException("Falha simulada"));
+		when(itemRepository.save(item)).thenReturn(item);
+
+		ProcessamentoItemResponse response = itemService.processar(5L);
+
+		assertThat(response.isSucesso()).isFalse();
+		assertThat(response.getMensagem()).isEqualTo("Falha simulada");
+		assertThat(response.getItem().getStatus()).isEqualTo(StatusItem.FALHA);
+		verify(observer).atualizar(item, StatusItem.PENDENTE, StatusItem.FALHA);
+	}
+
+	@Test
+	void deveFalharAoProcessarItemInexistente() {
+		when(itemRepository.findByIdAndDeletadoFalse(99L)).thenReturn(Optional.empty());
+
+		assertThatThrownBy(() -> itemService.processar(99L))
+				.isInstanceOf(ItemNaoEncontradoException.class);
+	}
+
 	private Item item(Long id, String nome) {
-		Item item = new Item(nome, "Descrição", 10);
+		Item item = new Item(nome, "Descrição", TipoItem.FISICO, 10, null, null);
 		item.setId(id);
 		item.setDataCriacao(LocalDateTime.of(2026, 9, 22, 12, 0));
 		return item;
