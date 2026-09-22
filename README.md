@@ -1,12 +1,7 @@
 # Template PI de Projeto de Software
 
-Projeto Spring Boot executável para adaptar durante a PI. Ele reproduz os
-padrões usados em `exercicio-cursos-online`: API em camadas, validação,
-PostgreSQL, exclusão lógica, testes, cobertura, Docker e CI/CD. O exemplo também
-mostra Strategy, Factory e Observer trabalhando no mesmo fluxo.
-
-Procure por `TODO(PI)` antes de começar a prova. Cada ocorrência marca uma
-decisão que normalmente depende do enunciado.
+API Spring Boot para adaptar durante a PI. O projeto inclui PostgreSQL, testes,
+Docker, CI/CD e exemplos de Strategy, Factory e Observer.
 
 ## Arquitetura
 
@@ -24,185 +19,116 @@ ItemService
     `---> ItemRepository ---> PostgreSQL
 ```
 
-O pacote-base é `br.insper.templatepi`. O exemplo usa o recurso `Item` e pode
-ser renomeado sem alterar a separação entre as camadas.
+- **Strategy:** implementações de `ProcessadorItem` processam cada `TipoItem`.
+- **Factory:** `ProcessadorItemFactory` seleciona a Strategy correta.
+- **Observer:** auditoria e notificação reagem ao processamento.
+- **Validação:** `ValidadorItem` concentra as regras condicionais de criação.
 
-## Contrato de exemplo
+Endpoints principais:
 
-### Criar um item
-
-`POST /itens`
-
-```json
-{
-  "nome": "Item de exemplo",
-  "descricao": "Descrição do item",
-  "tipo": "FISICO",
-  "quantidade": 10
-}
+```text
+POST   /itens
+GET    /itens
+GET    /itens?nome=abc
+DELETE /itens/{id}
+POST   /itens/{id}/processar
 ```
 
-A API retorna `201 Created`. Nome, descrição e tipo são obrigatórios. Os textos
-são salvos sem espaços no início e no fim.
+## Como executar
 
-A validação restante depende do tipo:
-
-| Tipo | Campo obrigatório |
-|---|---|
-| `FISICO` | `quantidade` positiva |
-| `DIGITAL` | `urlAcesso` preenchida |
-| `SERVICO` | `duracaoMinutos` positiva |
-
-### Listar itens
-
-`GET /itens` lista os itens ativos em ordem alfabética.
-
-`GET /itens?nome=ite` filtra pelo início do nome, sem diferenciar maiúsculas e
-minúsculas.
-
-### Excluir um item
-
-`DELETE /itens/{id}` faz exclusão lógica e retorna `204 No Content`. Um ID
-inexistente ou já excluído retorna `404 Not Found`.
-
-### Processar um item
-
-`POST /itens/{id}/processar` usa a Factory para selecionar uma Strategy de
-acordo com `tipo`. O status muda de `PENDENTE` para `PROCESSADO` ou `FALHA` e os
-Observers recebem a mudança.
-
-Exemplo de resposta:
-
-```json
-{
-  "sucesso": true,
-  "mensagem": "Item físico separado para envio",
-  "item": {
-    "id": 1,
-    "tipo": "FISICO",
-    "status": "PROCESSADO"
-  }
-}
-```
-
-## Padrões de projeto
-
-- **Strategy:** cada implementação de `ProcessadorItem` trata um `TipoItem`.
-- **Factory:** `ProcessadorItemFactory` recebe todas as Strategies do Spring e
-  seleciona a implementação correta sem condicionais no serviço.
-- **Observer:** `ItemService` notifica auditoria e notificação simulada quando o
-  status muda.
-- **Validação condicional:** `ValidadorItem` aplica somente as regras do tipo
-  informado.
-
-## Como executar os testes
-
-O teste unitário não precisa de Docker:
+Requisitos: Java 25 e Docker Desktop.
 
 ```powershell
+# Testes unitários
 .\mvnw.cmd "-Dtest=ItemServiceTest,ValidadorItemTest,ProcessadorItem*Test" test
-```
 
-A validação completa usa Testcontainers e exige o Docker Desktop ativo:
-
-```powershell
+# Todos os testes, cobertura e geração do JAR
 .\mvnw.cmd clean verify
+
+# Executar a API com um PostgreSQL disponível
+.\mvnw.cmd spring-boot:run
 ```
 
-O relatório de cobertura fica em `target/site/jacoco/index.html`. O build exige
-100% de linhas e branches em `ItemService`.
+Para executar fora do Compose, configure `DB_URL`, `DB_USERNAME` e
+`DB_PASSWORD`. No Linux e no GitHub Actions, use `./mvnw` no lugar de
+`.\mvnw.cmd`.
 
-No Linux ou no GitHub Actions, substitua `.\mvnw.cmd` por `./mvnw`.
+## Docker
 
-## Como executar com Docker Compose
-
-Primeiro gere o JAR:
-
-```powershell
-.\mvnw.cmd clean package -DskipTests
-```
-
-Depois copie o arquivo de exemplo e preencha somente valores locais:
+Crie o arquivo local de configuração:
 
 ```powershell
 Copy-Item .env.example .env
 ```
 
-Para usar uma imagem construída localmente:
+Defina no `.env` a imagem e senhas locais. `POSTGRES_PASSWORD` e `DB_PASSWORD`
+devem ter o mesmo valor. O arquivo `.env` não é versionado.
+
+Comandos úteis:
 
 ```powershell
+# Gerar o JAR e construir a imagem
+.\mvnw.cmd clean package -DskipTests
 docker build -t seu_usuario/template-pi-api:latest .
+
+# Iniciar ou atualizar os serviços
 docker compose up -d
+
+# Consultar estado e logs
+docker compose ps
+docker compose logs -f api
+docker compose logs -f db
+
+# Reiniciar somente a API
+docker compose restart api
+
+# Parar os serviços sem apagar o banco
+docker compose down
+
+# Parar e apagar também o volume do PostgreSQL
+docker compose down -v
 ```
 
-O PostgreSQL usa um volume persistente e só libera a API depois de passar no
-healthcheck. O arquivo `.env` e chaves `*.pem` são ignorados pelo Git.
+## Docker Hub
 
-## Adaptação para a PI
+Crie no Docker Hub o repositório `template-pi-api` e execute:
 
-Use esta ordem para reduzir erros de renomeação:
+```powershell
+docker login
+docker build -t seu_usuario/template-pi-api:latest .
+docker push seu_usuario/template-pi-api:latest
+```
 
-1. Leia o contrato e identifique recurso, campos, validações, filtros e status.
-2. Renomeie `Item`, os DTOs, o repositório, o serviço e o controller.
-3. Ajuste o pacote-base e os metadados do `pom.xml`, se necessário.
-4. Atualize entidade, enums, tabela e consultas derivadas do repositório.
-5. Troque as regras condicionais de `ValidadorItem`.
-6. Crie uma Strategy por tipo e mantenha a seleção dentro da Factory.
-7. Remova ou adapte os Observers que não fizerem sentido para o enunciado.
-8. Atualize as rotas e os códigos HTTP.
-9. Troque os cenários dos testes antes de alterar regras mais complexas.
-10. Atualize a classe monitorada pelo JaCoCo no `pom.xml`.
-11. Ajuste `Dockerfile`, Compose, nome da imagem e rota do healthcheck.
-12. Execute `rg "TODO\(PI\)"` e resolva cada ocorrência.
-13. Rode `clean verify` antes de abrir o Pull Request.
-
-Não apague a proteção contra registros deletados sem conferir o enunciado. No
-exemplo, todas as consultas públicas incluem `deletado = false`.
-
-## CI/CD
-
-O workflow `Testes` executa `clean verify` em Pull Requests e publica o relatório
-JaCoCo como artefato.
-
-O workflow `Publicação e deploy` executa em pushes para `main`. Ele só inicia
-quando a variável `DOCKERHUB_USERNAME` está configurada. O fluxo:
-
-1. executa testes e cobertura;
-2. publica `template-pi-api:latest` e `template-pi-api:<SHA>` no Docker Hub;
-3. conecta na EC2 por SSH;
-4. atualiza o Compose em `/opt/template-pi`;
-5. testa `GET /itens` antes de concluir.
-
-Configure no GitHub:
-
-| Tipo | Nome | Uso |
-|---|---|---|
-| Variable | `DOCKERHUB_USERNAME` | Usuário e namespace da imagem |
-| Secret | `DOCKERHUB_TOKEN` | Token de publicação no Docker Hub |
-| Secret | `AWS_HOST` | IP ou DNS da EC2 |
-| Secret | `AWS_USER` | Usuário SSH |
-| Secret | `AWS_SSH_KEY` | Chave privada de deploy |
-| Secret | `AWS_KNOWN_HOSTS` | Chave pública validada do host SSH |
-
-Na EC2, mantenha `compose.yaml` e `.env` em `/opt/template-pi`. Use no `.env`:
+No `.env`, use:
 
 ```dotenv
 DOCKER_IMAGE=seu_usuario/template-pi-api
+IMAGE_TAG=latest
 ```
 
-Não coloque tokens, senhas, chaves ou endereços reais no repositório.
+## CI/CD
 
-## Checklist antes da entrega
+O workflow de testes executa `clean verify` nos Pull Requests. O workflow de
+deploy executa em pushes para `main`, publica as tags `latest` e SHA no Docker
+Hub e atualiza o Compose em `/opt/template-pi` na EC2.
 
-- [ ] Todos os `TODO(PI)` foram revisados.
-- [ ] Os nomes refletem o domínio da prova.
-- [ ] O contrato HTTP corresponde ao enunciado.
-- [ ] Enums, Strategies e validações representam os tipos da prova.
-- [ ] A Factory é o único ponto de seleção das Strategies.
-- [ ] Os Observers não contêm regras centrais de negócio.
-- [ ] Registros excluídos não aparecem nas consultas.
-- [ ] Testes unitários cobrem todas as decisões do serviço.
-- [ ] Testes de integração usam banco descartável.
-- [ ] `clean verify` termina com sucesso.
-- [ ] Nenhum segredo foi versionado.
-- [ ] O Pull Request mostra o pipeline aprovado.
+Configure o ambiente `producao` no GitHub:
+
+| Tipo | Nome |
+|---|---|
+| Variable | `DOCKERHUB_USERNAME` |
+| Secret | `DOCKERHUB_TOKEN` |
+| Secret | `AWS_HOST` |
+| Secret | `AWS_USER` |
+| Secret | `AWS_SSH_KEY` |
+| Secret | `AWS_KNOWN_HOSTS` |
+
+Na EC2, mantenha estes arquivos:
+
+```text
+/opt/template-pi/compose.yaml
+/opt/template-pi/.env
+```
+
+O deploy usa somente a branch `main`. Não coloque senhas, tokens, chaves ou
+endereços reais no repositório.
