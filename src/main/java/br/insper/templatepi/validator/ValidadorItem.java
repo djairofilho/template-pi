@@ -4,7 +4,7 @@ import br.insper.templatepi.dto.ItemRequest;
 import br.insper.templatepi.exception.ValidacaoItemException;
 import org.springframework.stereotype.Component;
 
-// TODO(PI): mantenha aqui as regras que dependem de mais de um campo.
+// TODO(PI): adapte as regras condicionais aos tipos definidos no enunciado.
 @Component
 public class ValidadorItem {
 

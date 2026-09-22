@@ -6,7 +6,6 @@ import br.insper.templatepi.dto.ProcessamentoItemResponse;
 import br.insper.templatepi.entity.Item;
 import br.insper.templatepi.entity.StatusItem;
 import br.insper.templatepi.exception.ItemNaoEncontradoException;
-import br.insper.templatepi.observer.ItemObservable;
 import br.insper.templatepi.observer.ItemObserver;
 import br.insper.templatepi.processor.ProcessadorItem;
 import br.insper.templatepi.processor.ProcessadorItemFactory;
@@ -19,7 +18,7 @@ import java.util.List;
 
 // TODO(PI): concentre nesta classe as regras de negócio específicas da prova.
 @Service
-public class ItemService implements ItemObservable {
+public class ItemService {
 
 	private final ItemRepository itemRepository;
 	private final ValidadorItem validadorItem;
@@ -97,8 +96,7 @@ public class ItemService implements ItemObservable {
 		return new ProcessamentoItemResponse(sucesso, mensagem, ItemResponse.fromEntity(salvo));
 	}
 
-	@Override
-	public void notificarObservadores(Item item, StatusItem statusAnterior) {
+	private void notificarObservadores(Item item, StatusItem statusAnterior) {
 		for (ItemObserver observer : observers) {
 			observer.atualizar(item, statusAnterior, item.getStatus());
 		}
