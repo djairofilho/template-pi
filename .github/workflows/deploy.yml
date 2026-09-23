@@ -76,7 +76,7 @@ jobs:
              IMAGE_TAG=$IMAGE_TAG docker compose pull api && \
              IMAGE_TAG=$IMAGE_TAG docker compose up -d --remove-orphans && \
              for tentativa in \$(seq 1 24); do \
-               if curl --fail --silent http://localhost:8080/itens >/dev/null; then \
+               if curl --fail --silent http://localhost:8080/avaliacoes >/dev/null; then \
                  docker compose ps; \
                  exit 0; \
                fi; \
