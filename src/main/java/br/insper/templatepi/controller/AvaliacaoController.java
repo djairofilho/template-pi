@@ -1,7 +1,7 @@
 package br.insper.templatepi.controller;
 
-import br.insper.templatepi.entity.Item;
-import br.insper.templatepi.service.ItemService;
+import br.insper.templatepi.entity.Avaliacao;
+import br.insper.templatepi.service.AvaliacaoService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -17,28 +17,33 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/avaliacoes")
-public class ItemController {
+public class AvaliacaoController {
 
-	private final ItemService itemService;
+	private final AvaliacaoService avaliacaoService;
 
-	public ItemController(ItemService itemService) {
-		this.itemService = itemService;
-	}
-
-	@GetMapping
-	public List<Item> listar() {
-		return itemService.listar();
+	public AvaliacaoController(AvaliacaoService avaliacaoService) {
+		this.avaliacaoService = avaliacaoService;
 	}
 
 	@PostMapping
 	@ResponseStatus(HttpStatus.CREATED)
-	public Item criar(@Valid @RequestBody Item item) {
-		return itemService.criar(item);
+	public Avaliacao criar(@Valid @RequestBody Avaliacao avaliacao) {
+		return avaliacaoService.criar(avaliacao);
+	}
+
+	@GetMapping
+	public List<Avaliacao> listar() {
+		return avaliacaoService.listar();
+	}
+
+	@GetMapping("/{id}")
+	public Avaliacao buscarPorId(@PathVariable Long id) {
+		return avaliacaoService.buscarPorId(id);
 	}
 
 	@DeleteMapping("/{id}")
 	@ResponseStatus(HttpStatus.NO_CONTENT)
-	public void deletar(@PathVariable Long id) {
-		itemService.deletar(id);
+	public void excluir(@PathVariable Long id) {
+		avaliacaoService.excluir(id);
 	}
 }
