@@ -1,0 +1,146 @@
+{
+  "info": {
+    "_postman_id": "b6a147a4-e98f-4f72-9c34-bd70f02d5659",
+    "name": "Sistema de Avaliações",
+    "description": "Collection simples para testar a API de avaliações localmente ou na AWS.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080"
+    },
+    {
+      "key": "avaliacaoId",
+      "value": "1"
+    }
+  ],
+  "item": [
+    {
+      "name": "Criar avaliação",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 201', function () {",
+              "    pm.response.to.have.status(201);",
+              "});",
+              "",
+              "const resposta = pm.response.json();",
+              "pm.collectionVariables.set('avaliacaoId', resposta.id);"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"autor\": \"Maria\",\n  \"conteudo\": \"Excelente atendimento\",\n  \"nota\": 5\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/avaliacoes",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "avaliacoes"
+          ]
+        }
+      }
+    },
+    {
+      "name": "Listar avaliações",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/avaliacoes",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "avaliacoes"
+          ]
+        }
+      }
+    },
+    {
+      "name": "Buscar avaliação por ID",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/avaliacoes/{{avaliacaoId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "avaliacoes",
+            "{{avaliacaoId}}"
+          ]
+        }
+      }
+    },
+    {
+      "name": "Criar avaliação negativa",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"autor\": \"João\",\n  \"conteudo\": \"Atendimento ruim\",\n  \"nota\": 1\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/avaliacoes",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "avaliacoes"
+          ]
+        }
+      }
+    },
+    {
+      "name": "Excluir avaliação",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/avaliacoes/{{avaliacaoId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "avaliacoes",
+            "{{avaliacaoId}}"
+          ]
+        }
+      }
+    }
+  ]
+}
