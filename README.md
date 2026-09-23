@@ -13,16 +13,18 @@ ItemController
     |
     v
 ItemService
-    |---> ValidadorItem
+    |---> ValidadorItemFactory ---> ValidadorItem (Strategy)
     |---> ProcessadorItemFactory ---> ProcessadorItem (Strategy)
     |---> ItemObserver
     `---> ItemRepository ---> PostgreSQL
 ```
 
-- **Strategy:** implementações de `ProcessadorItem` processam cada `TipoItem`.
-- **Factory:** `ProcessadorItemFactory` seleciona a Strategy correta.
+- **Strategy:** implementações de `ValidadorItem` validam e implementações de
+  `ProcessadorItem` processam cada `TipoItem`.
+- **Factory:** as Factories de validação e processamento selecionam as
+  Strategies corretas.
 - **Observer:** auditoria e notificação reagem ao processamento.
-- **Validação:** `ValidadorItem` concentra as regras condicionais de criação.
+- **Validação:** cada `ValidadorItem` contém apenas a regra do tipo suportado.
 
 Endpoints principais:
 
@@ -40,7 +42,7 @@ Requisitos: Java 25 e Docker Desktop.
 
 ```powershell
 # Testes unitários
-.\mvnw.cmd "-Dtest=ItemServiceTest,ValidadorItemTest,ProcessadorItem*Test" test
+.\mvnw.cmd "-Dtest=ItemServiceTest,ValidadorItem*Test,ProcessadorItem*Test" test
 
 # Todos os testes, cobertura e geração do JAR
 .\mvnw.cmd clean verify
