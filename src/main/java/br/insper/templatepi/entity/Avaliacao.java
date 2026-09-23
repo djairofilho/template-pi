@@ -17,12 +17,13 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.LocalDateTime;
+
 @Entity
-@Table(name = "itens")
+@Table(name = "avaliacoes")
 @Getter
 @Setter
 @NoArgsConstructor
-public class Item {
+public class Avaliacao {
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -34,7 +35,7 @@ public class Item {
 	private String autor;
 
 	@NotBlank(message = "O conteúdo é obrigatório")
-	@Column(nullable = false, length = 150)
+	@Column(nullable = false, length = 1000)
 	private String conteudo;
 
 	@NotNull(message = "A nota é obrigatória")
@@ -47,10 +48,7 @@ public class Item {
 	@Column(nullable = false, updatable = false)
 	private LocalDateTime dataAvaliacao;
 
-	public Item(
-			String autor,
-			String conteudo,
-			Integer nota) {
+	public Avaliacao(String autor, String conteudo, Integer nota) {
 		this.autor = autor;
 		this.conteudo = conteudo;
 		this.nota = nota;
