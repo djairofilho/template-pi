@@ -14,16 +14,14 @@ ItemController
     v
 ItemService
     |---> ValidadorItemFactory ---> ValidadorItem (Strategy)
-    |---> ProcessadorItemFactory ---> ProcessadorItem (Strategy)
+    |---> UsuarioClient ---> API externa
     |---> ItemObserver
     `---> ItemRepository ---> PostgreSQL
 ```
 
-- **Strategy:** implementações de `ValidadorItem` validam e implementações de
-  `ProcessadorItem` processam cada `TipoItem`.
-- **Factory:** as Factories de validação e processamento selecionam as
-  Strategies corretas.
-- **Observer:** auditoria e notificação reagem ao processamento.
+- **Strategy:** cada implementação de `ValidadorItem` valida um `TipoItem`.
+- **Factory:** `ValidadorItemFactory` seleciona a Strategy correta.
+- **Observer:** auditoria e notificação reagem à criação e exclusão.
 - **Validação:** cada `ValidadorItem` contém apenas a regra do tipo suportado.
 
 Endpoints principais:
@@ -31,9 +29,8 @@ Endpoints principais:
 ```text
 POST   /itens
 GET    /itens
-GET    /itens?nome=abc
+GET    /itens?clienteId=abc
 DELETE /itens/{id}
-POST   /itens/{id}/processar
 ```
 
 ## Como executar
@@ -42,7 +39,7 @@ Requisitos: Java 25 e Docker Desktop.
 
 ```powershell
 # Testes unitários
-.\mvnw.cmd "-Dtest=ItemServiceTest,ValidadorItem*Test,ProcessadorItem*Test" test
+.\mvnw.cmd "-Dtest=ItemServiceTest,ValidadorItem*Test" test
 
 # Todos os testes, cobertura e geração do JAR
 .\mvnw.cmd clean verify
@@ -51,8 +48,8 @@ Requisitos: Java 25 e Docker Desktop.
 .\mvnw.cmd spring-boot:run
 ```
 
-Para executar fora do Compose, configure `DB_URL`, `DB_USERNAME` e
-`DB_PASSWORD`. No Linux e no GitHub Actions, use `./mvnw` no lugar de
+Para executar fora do Compose, configure `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`
+e `USERS_API_URL`. No Linux e no GitHub Actions, use `./mvnw` no lugar de
 `.\mvnw.cmd`.
 
 ## Docker
@@ -64,7 +61,8 @@ Copy-Item .env.example .env
 ```
 
 Defina no `.env` a imagem e senhas locais. `POSTGRES_PASSWORD` e `DB_PASSWORD`
-devem ter o mesmo valor. O arquivo `.env` não é versionado.
+devem ter o mesmo valor. Configure também `USERS_API_URL` com a rota base
+`/users`. O arquivo `.env` não é versionado.
 
 Comandos úteis:
 
