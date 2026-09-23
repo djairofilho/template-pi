@@ -8,20 +8,21 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-class ValidadorItemTest {
+class ValidadorItemStrategyTest {
 
-	private final ValidadorItem validador = new ValidadorItem();
+	private final ValidadorItem fisico = new ValidadorItemFisico();
+	private final ValidadorItem digital = new ValidadorItemDigital();
+	private final ValidadorItem servico = new ValidadorItemServico();
 
 	@Test
-	void deveExigirTipo() {
-		ItemRequest request = request(null, null, null, null);
-
-		assertThatThrownBy(() -> validador.validar(request))
-				.isInstanceOf(ValidacaoItemException.class)
-				.hasMessage("O tipo é obrigatório");
+	void deveInformarTipoSuportadoPorCadaStrategy() {
+		assertThat(fisico.tipoSuportado()).isEqualTo(TipoItem.FISICO);
+		assertThat(digital.tipoSuportado()).isEqualTo(TipoItem.DIGITAL);
+		assertThat(servico.tipoSuportado()).isEqualTo(TipoItem.SERVICO);
 	}
 
 	@ParameterizedTest
@@ -30,14 +31,14 @@ class ValidadorItemTest {
 	void deveExigirQuantidadePositivaParaItemFisico(Integer quantidade) {
 		ItemRequest request = request(TipoItem.FISICO, quantidade, null, null);
 
-		assertThatThrownBy(() -> validador.validar(request))
+		assertThatThrownBy(() -> fisico.validar(request))
 				.isInstanceOf(ValidacaoItemException.class)
 				.hasMessageContaining("quantidade");
 	}
 
 	@Test
 	void deveAceitarItemFisicoValido() {
-		assertThatCode(() -> validador.validar(request(TipoItem.FISICO, 1, null, null)))
+		assertThatCode(() -> fisico.validar(request(TipoItem.FISICO, 1, null, null)))
 				.doesNotThrowAnyException();
 	}
 
@@ -47,14 +48,14 @@ class ValidadorItemTest {
 	void deveExigirUrlParaItemDigital(String url) {
 		ItemRequest request = request(TipoItem.DIGITAL, null, url, null);
 
-		assertThatThrownBy(() -> validador.validar(request))
+		assertThatThrownBy(() -> digital.validar(request))
 				.isInstanceOf(ValidacaoItemException.class)
 				.hasMessageContaining("URL");
 	}
 
 	@Test
 	void deveAceitarItemDigitalValido() {
-		assertThatCode(() -> validador.validar(
+		assertThatCode(() -> digital.validar(
 				request(TipoItem.DIGITAL, null, "https://exemplo.com", null)))
 				.doesNotThrowAnyException();
 	}
@@ -65,14 +66,14 @@ class ValidadorItemTest {
 	void deveExigirDuracaoPositivaParaServico(Integer duracao) {
 		ItemRequest request = request(TipoItem.SERVICO, null, null, duracao);
 
-		assertThatThrownBy(() -> validador.validar(request))
+		assertThatThrownBy(() -> servico.validar(request))
 				.isInstanceOf(ValidacaoItemException.class)
 				.hasMessageContaining("duração");
 	}
 
 	@Test
 	void deveAceitarServicoValido() {
-		assertThatCode(() -> validador.validar(request(TipoItem.SERVICO, null, null, 60)))
+		assertThatCode(() -> servico.validar(request(TipoItem.SERVICO, null, null, 60)))
 				.doesNotThrowAnyException();
 	}
 

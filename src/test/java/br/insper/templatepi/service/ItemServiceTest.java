@@ -12,6 +12,7 @@ import br.insper.templatepi.processor.ProcessadorItem;
 import br.insper.templatepi.processor.ProcessadorItemFactory;
 import br.insper.templatepi.repository.ItemRepository;
 import br.insper.templatepi.validator.ValidadorItem;
+import br.insper.templatepi.validator.ValidadorItemFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -43,6 +44,9 @@ class ItemServiceTest {
 	private ValidadorItem validadorItem;
 
 	@Mock
+	private ValidadorItemFactory validadorFactory;
+
+	@Mock
 	private ProcessadorItemFactory processadorFactory;
 
 	@Mock
@@ -57,7 +61,7 @@ class ItemServiceTest {
 	void configurarService() {
 		itemService = new ItemService(
 				itemRepository,
-				validadorItem,
+				validadorFactory,
 				processadorFactory,
 				List.of(observer)
 		);
@@ -74,6 +78,7 @@ class ItemServiceTest {
 				"  https://exemplo.com/item  ",
 				null
 		);
+		when(validadorFactory.obter(TipoItem.DIGITAL)).thenReturn(validadorItem);
 		when(itemRepository.save(any(Item.class))).thenAnswer(invocation -> {
 			Item item = invocation.getArgument(0);
 			item.setId(1L);
@@ -84,6 +89,7 @@ class ItemServiceTest {
 		ItemResponse response = itemService.criar(request);
 
 		ArgumentCaptor<Item> captor = ArgumentCaptor.forClass(Item.class);
+		verify(validadorFactory).obter(TipoItem.DIGITAL);
 		verify(validadorItem).validar(request);
 		verify(itemRepository).save(captor.capture());
 		Item salvo = captor.getValue();
@@ -109,6 +115,7 @@ class ItemServiceTest {
 				null,
 				null
 		);
+		when(validadorFactory.obter(TipoItem.FISICO)).thenReturn(validadorItem);
 		when(itemRepository.save(any(Item.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
 		ItemResponse response = itemService.criar(request);

@@ -11,6 +11,7 @@ import br.insper.templatepi.processor.ProcessadorItem;
 import br.insper.templatepi.processor.ProcessadorItemFactory;
 import br.insper.templatepi.repository.ItemRepository;
 import br.insper.templatepi.validator.ValidadorItem;
+import br.insper.templatepi.validator.ValidadorItemFactory;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -21,23 +22,24 @@ import java.util.List;
 public class ItemService {
 
 	private final ItemRepository itemRepository;
-	private final ValidadorItem validadorItem;
+	private final ValidadorItemFactory validadorFactory;
 	private final ProcessadorItemFactory processadorFactory;
 	private final List<ItemObserver> observers;
 
 	public ItemService(
 			ItemRepository itemRepository,
-			ValidadorItem validadorItem,
+			ValidadorItemFactory validadorFactory,
 			ProcessadorItemFactory processadorFactory,
 			List<ItemObserver> observers) {
 		this.itemRepository = itemRepository;
-		this.validadorItem = validadorItem;
+		this.validadorFactory = validadorFactory;
 		this.processadorFactory = processadorFactory;
 		this.observers = observers;
 	}
 
 	public ItemResponse criar(ItemRequest request) {
-		validadorItem.validar(request);
+		ValidadorItem validador = validadorFactory.obter(request.getTipo());
+		validador.validar(request);
 		Item item = new Item(
 				request.getNome().trim(),
 				request.getDescricao().trim(),
