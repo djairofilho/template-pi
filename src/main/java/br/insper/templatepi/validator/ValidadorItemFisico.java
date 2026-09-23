@@ -1,6 +1,6 @@
 package br.insper.templatepi.validator;
 
-import br.insper.templatepi.dto.ItemRequest;
+import br.insper.templatepi.entity.Item;
 import br.insper.templatepi.entity.TipoItem;
 import br.insper.templatepi.exception.ValidacaoItemException;
 import org.springframework.stereotype.Component;
@@ -15,8 +15,8 @@ public class ValidadorItemFisico implements ValidadorItem {
 	}
 
 	@Override
-	public void validar(ItemRequest request) {
-		if (request.getQuantidade() == null || request.getQuantidade() <= 0) {
+	public void validar(Item item) {
+		if (item.getQuantidade() == null || item.getQuantidade() <= 0) {
 			throw new ValidacaoItemException("A quantidade deve ser positiva para itens físicos");
 		}
 	}

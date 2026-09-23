@@ -1,6 +1,6 @@
 package br.insper.templatepi.validator;
 
-import br.insper.templatepi.dto.ItemRequest;
+import br.insper.templatepi.entity.Item;
 import br.insper.templatepi.entity.TipoItem;
 import br.insper.templatepi.exception.ValidacaoItemException;
 import org.springframework.stereotype.Component;
@@ -15,8 +15,8 @@ public class ValidadorItemServico implements ValidadorItem {
 	}
 
 	@Override
-	public void validar(ItemRequest request) {
-		if (request.getDuracaoMinutos() == null || request.getDuracaoMinutos() <= 0) {
+	public void validar(Item item) {
+		if (item.getDuracaoMinutos() == null || item.getDuracaoMinutos() <= 0) {
 			throw new ValidacaoItemException("A duração deve ser positiva para serviços");
 		}
 	}

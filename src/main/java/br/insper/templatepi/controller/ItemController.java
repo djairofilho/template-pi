@@ -1,8 +1,6 @@
 package br.insper.templatepi.controller;
 
-import br.insper.templatepi.dto.ItemRequest;
-import br.insper.templatepi.dto.ItemResponse;
-import br.insper.templatepi.dto.ProcessamentoItemResponse;
+import br.insper.templatepi.entity.Item;
 import br.insper.templatepi.service.ItemService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -30,24 +28,19 @@ public class ItemController {
 	}
 
 	@GetMapping
-	public List<ItemResponse> listar(@RequestParam(required = false) String nome) {
-		return itemService.listar(nome);
+	public List<Item> listar(@RequestParam(required = false) String clienteId) {
+		return itemService.listar(clienteId);
 	}
 
 	@PostMapping
 	@ResponseStatus(HttpStatus.CREATED)
-	public ItemResponse criar(@Valid @RequestBody ItemRequest request) {
-		return itemService.criar(request);
+	public Item criar(@Valid @RequestBody Item item) {
+		return itemService.criar(item);
 	}
 
 	@DeleteMapping("/{id}")
 	@ResponseStatus(HttpStatus.NO_CONTENT)
 	public void deletar(@PathVariable Long id) {
 		itemService.deletar(id);
-	}
-
-	@PostMapping("/{id}/processar")
-	public ProcessamentoItemResponse processar(@PathVariable Long id) {
-		return itemService.processar(id);
 	}
 }

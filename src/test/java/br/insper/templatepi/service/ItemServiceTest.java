@@ -1,15 +1,10 @@
 package br.insper.templatepi.service;
 
-import br.insper.templatepi.dto.ItemRequest;
-import br.insper.templatepi.dto.ItemResponse;
-import br.insper.templatepi.dto.ProcessamentoItemResponse;
+import br.insper.templatepi.client.UsuarioClient;
 import br.insper.templatepi.entity.Item;
-import br.insper.templatepi.entity.StatusItem;
 import br.insper.templatepi.entity.TipoItem;
 import br.insper.templatepi.exception.ItemNaoEncontradoException;
 import br.insper.templatepi.observer.ItemObserver;
-import br.insper.templatepi.processor.ProcessadorItem;
-import br.insper.templatepi.processor.ProcessadorItemFactory;
 import br.insper.templatepi.repository.ItemRepository;
 import br.insper.templatepi.validator.ValidadorItem;
 import br.insper.templatepi.validator.ValidadorItemFactory;
@@ -23,6 +18,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -33,7 +29,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-// TODO(PI): mantenha estes padrões e troque os cenários pelas regras da prova.
+// TODO(PI): troque os cenários pelas regras específicas do enunciado.
 @ExtendWith(MockitoExtension.class)
 class ItemServiceTest {
 
@@ -41,16 +37,13 @@ class ItemServiceTest {
 	private ItemRepository itemRepository;
 
 	@Mock
-	private ValidadorItem validadorItem;
+	private UsuarioClient usuarioClient;
 
 	@Mock
 	private ValidadorItemFactory validadorFactory;
 
 	@Mock
-	private ProcessadorItemFactory processadorFactory;
-
-	@Mock
-	private ProcessadorItem processador;
+	private ValidadorItem validador;
 
 	@Mock
 	private ItemObserver observer;
@@ -61,177 +54,127 @@ class ItemServiceTest {
 	void configurarService() {
 		itemService = new ItemService(
 				itemRepository,
+				usuarioClient,
 				validadorFactory,
-				processadorFactory,
 				List.of(observer)
 		);
 	}
 
 	@Test
-	void deveCriarItemDigitalComTextoNormalizado() {
-		LocalDateTime dataCriacao = LocalDateTime.of(2026, 9, 22, 12, 0);
-		ItemRequest request = new ItemRequest(
-				"  Item de exemplo  ",
-				"  Descrição do item  ",
-				TipoItem.DIGITAL,
-				null,
-				"  https://exemplo.com/item  ",
-				null
-		);
-		when(validadorFactory.obter(TipoItem.DIGITAL)).thenReturn(validadorItem);
+	void deveCriarItemComClienteValidadoEValorTotalCalculado() {
+		Item item = item("  Item físico  ", TipoItem.FISICO, "  cliente-1  ", 10, null, null, "2.50");
+		when(validadorFactory.obter(TipoItem.FISICO)).thenReturn(validador);
+		when(usuarioClient.buscarEmail("cliente-1")).thenReturn("cliente@exemplo.com");
 		when(itemRepository.save(any(Item.class))).thenAnswer(invocation -> {
-			Item item = invocation.getArgument(0);
-			item.setId(1L);
-			item.setDataCriacao(dataCriacao);
-			return item;
+			Item salvo = invocation.getArgument(0);
+			salvo.setId(1L);
+			salvo.setDataCriacao(LocalDateTime.of(2026, 9, 23, 10, 0));
+			return salvo;
 		});
 
-		ItemResponse response = itemService.criar(request);
+		Item response = itemService.criar(item);
 
 		ArgumentCaptor<Item> captor = ArgumentCaptor.forClass(Item.class);
-		verify(validadorFactory).obter(TipoItem.DIGITAL);
-		verify(validadorItem).validar(request);
+		verify(validadorFactory).obter(TipoItem.FISICO);
+		verify(validador).validar(item);
 		verify(itemRepository).save(captor.capture());
 		Item salvo = captor.getValue();
-		assertThat(salvo.getNome()).isEqualTo("Item de exemplo");
-		assertThat(salvo.getDescricao()).isEqualTo("Descrição do item");
-		assertThat(salvo.getTipo()).isEqualTo(TipoItem.DIGITAL);
-		assertThat(salvo.getUrlAcesso()).isEqualTo("https://exemplo.com/item");
-		assertThat(salvo.getStatus()).isEqualTo(StatusItem.PENDENTE);
-		assertThat(salvo.isDeletado()).isFalse();
+		assertThat(salvo.getNome()).isEqualTo("Item físico");
+		assertThat(salvo.getClienteId()).isEqualTo("cliente-1");
+		assertThat(salvo.getEmailCliente()).isEqualTo("cliente@exemplo.com");
+		assertThat(salvo.getValorTotal()).isEqualByComparingTo("25.00");
 		assertThat(response.getId()).isEqualTo(1L);
-		assertThat(response.getStatus()).isEqualTo(StatusItem.PENDENTE);
-		assertThat(response.getDataCriacao()).isEqualTo(dataCriacao);
-		verify(observer).atualizar(salvo, null, StatusItem.PENDENTE);
+		verify(observer).atualizar(salvo, "CRIADO");
 	}
 
 	@Test
-	void devePreservarUrlNulaAoCriarItemFisico() {
-		ItemRequest request = new ItemRequest(
-				"Item físico",
-				"Descrição",
-				TipoItem.FISICO,
-				10,
+	void deveUsarUmaUnidadeEValidarTextoOpcionalParaItemSemQuantidade() {
+		Item item = item(
+				"Arquivo",
+				TipoItem.DIGITAL,
+				"cliente-2",
 				null,
-				null
+				"  https://exemplo.com  ",
+				null,
+				"12.00"
 		);
-		when(validadorFactory.obter(TipoItem.FISICO)).thenReturn(validadorItem);
-		when(itemRepository.save(any(Item.class))).thenAnswer(invocation -> invocation.getArgument(0));
+		when(validadorFactory.obter(TipoItem.DIGITAL)).thenReturn(validador);
+		when(usuarioClient.buscarEmail("cliente-2")).thenReturn("digital@exemplo.com");
+		when(itemRepository.save(item)).thenReturn(item);
 
-		ItemResponse response = itemService.criar(request);
+		Item response = itemService.criar(item);
 
-		assertThat(response.getUrlAcesso()).isNull();
+		assertThat(response.getUrlAcesso()).isEqualTo("https://exemplo.com");
+		assertThat(response.getValorTotal()).isEqualByComparingTo("12.00");
 	}
 
 	@ParameterizedTest
 	@NullAndEmptySource
 	@ValueSource(strings = "   ")
-	void deveListarTodosQuandoFiltroNaoTemTexto(String nome) {
-		Item item = item(1L, "Algoritmo");
-		when(itemRepository.findByDeletadoFalseOrderByNomeAsc())
-				.thenReturn(List.of(item));
+	void deveListarTodosQuandoFiltroNaoTemTexto(String clienteId) {
+		Item item = item("Item", TipoItem.FISICO, "cliente-1", 1, null, null, "1.00");
+		when(itemRepository.findAllByOrderByDataCriacaoDesc()).thenReturn(List.of(item));
 
-		List<ItemResponse> response = itemService.listar(nome);
+		assertThat(itemService.listar(clienteId)).containsExactly(item);
 
-		assertThat(response).singleElement()
-				.extracting(ItemResponse::getNome)
-				.isEqualTo("Algoritmo");
-		verify(itemRepository).findByDeletadoFalseOrderByNomeAsc();
+		verify(itemRepository).findAllByOrderByDataCriacaoDesc();
 	}
 
 	@Test
-	void deveListarItensPeloInicioDoNome() {
-		Item item = item(2L, "Item de exemplo");
-		when(itemRepository
-				.findByDeletadoFalseAndNomeStartingWithIgnoreCaseOrderByNomeAsc("Item"))
+	void deveListarItensDoClienteInformado() {
+		Item item = item("Item", TipoItem.FISICO, "cliente-1", 1, null, null, "1.00");
+		when(itemRepository.findByClienteIdOrderByDataCriacaoDesc("cliente-1"))
 				.thenReturn(List.of(item));
 
-		List<ItemResponse> response = itemService.listar("  Item  ");
+		assertThat(itemService.listar("  cliente-1  ")).containsExactly(item);
 
-		assertThat(response).singleElement()
-				.extracting(ItemResponse::getId)
-				.isEqualTo(2L);
-		verify(itemRepository)
-				.findByDeletadoFalseAndNomeStartingWithIgnoreCaseOrderByNomeAsc("Item");
+		verify(itemRepository).findByClienteIdOrderByDataCriacaoDesc("cliente-1");
 	}
 
 	@Test
 	void deveRetornarListaVaziaQuandoNaoExistemItens() {
-		when(itemRepository.findByDeletadoFalseOrderByNomeAsc()).thenReturn(List.of());
+		when(itemRepository.findAllByOrderByDataCriacaoDesc()).thenReturn(List.of());
 
 		assertThat(itemService.listar(null)).isEmpty();
-
-		verify(itemRepository).findByDeletadoFalseOrderByNomeAsc();
 	}
 
 	@Test
-	void deveDeletarItemLogicamente() {
-		Item item = item(3L, "Item removível");
-		when(itemRepository.findByIdAndDeletadoFalse(3L)).thenReturn(Optional.of(item));
+	void deveDeletarItemEInformarObservers() {
+		Item item = item("Item", TipoItem.FISICO, "cliente-1", 1, null, null, "1.00");
+		item.setId(3L);
+		when(itemRepository.findById(3L)).thenReturn(Optional.of(item));
 
 		itemService.deletar(3L);
 
-		assertThat(item.isDeletado()).isTrue();
-		verify(itemRepository).findByIdAndDeletadoFalse(3L);
-		verify(itemRepository).save(item);
+		verify(itemRepository).delete(item);
+		verify(observer).atualizar(item, "EXCLUIDO");
 	}
 
 	@Test
-	void deveFalharAoDeletarItemInexistenteOuJaDeletado() {
-		when(itemRepository.findByIdAndDeletadoFalse(99L)).thenReturn(Optional.empty());
+	void deveFalharAoDeletarItemInexistente() {
+		when(itemRepository.findById(99L)).thenReturn(Optional.empty());
 
 		assertThatThrownBy(() -> itemService.deletar(99L))
 				.isInstanceOf(ItemNaoEncontradoException.class)
 				.hasMessage("Item com ID 99 não encontrado");
-
-		verify(itemRepository).findByIdAndDeletadoFalse(99L);
 	}
 
-	@Test
-	void deveProcessarItemComStrategySelecionadaPelaFactory() {
-		Item item = item(4L, "Item processável");
-		when(itemRepository.findByIdAndDeletadoFalse(4L)).thenReturn(Optional.of(item));
-		when(processadorFactory.obter(TipoItem.FISICO)).thenReturn(processador);
-		when(processador.processar(item)).thenReturn("Item processado");
-		when(itemRepository.save(item)).thenReturn(item);
-
-		ProcessamentoItemResponse response = itemService.processar(4L);
-
-		assertThat(response.isSucesso()).isTrue();
-		assertThat(response.getMensagem()).isEqualTo("Item processado");
-		assertThat(response.getItem().getStatus()).isEqualTo(StatusItem.PROCESSADO);
-		assertThat(response.getItem().getDataProcessamento()).isNotNull();
-		verify(observer).atualizar(item, StatusItem.PENDENTE, StatusItem.PROCESSADO);
-	}
-
-	@Test
-	void deveRegistrarFalhaQuandoStrategyLancaExcecao() {
-		Item item = item(5L, "Item com falha");
-		when(itemRepository.findByIdAndDeletadoFalse(5L)).thenReturn(Optional.of(item));
-		when(processadorFactory.obter(TipoItem.FISICO)).thenReturn(processador);
-		when(processador.processar(item)).thenThrow(new IllegalStateException("Falha simulada"));
-		when(itemRepository.save(item)).thenReturn(item);
-
-		ProcessamentoItemResponse response = itemService.processar(5L);
-
-		assertThat(response.isSucesso()).isFalse();
-		assertThat(response.getMensagem()).isEqualTo("Falha simulada");
-		assertThat(response.getItem().getStatus()).isEqualTo(StatusItem.FALHA);
-		verify(observer).atualizar(item, StatusItem.PENDENTE, StatusItem.FALHA);
-	}
-
-	@Test
-	void deveFalharAoProcessarItemInexistente() {
-		when(itemRepository.findByIdAndDeletadoFalse(99L)).thenReturn(Optional.empty());
-
-		assertThatThrownBy(() -> itemService.processar(99L))
-				.isInstanceOf(ItemNaoEncontradoException.class);
-	}
-
-	private Item item(Long id, String nome) {
-		Item item = new Item(nome, "Descrição", TipoItem.FISICO, 10, null, null);
-		item.setId(id);
-		item.setDataCriacao(LocalDateTime.of(2026, 9, 22, 12, 0));
-		return item;
+	private Item item(
+			String nome,
+			TipoItem tipo,
+			String clienteId,
+			Integer quantidade,
+			String url,
+			Integer duracao,
+			String preco) {
+		return new Item(
+				nome,
+				tipo,
+				clienteId,
+				quantidade,
+				url,
+				duracao,
+				new BigDecimal(preco)
+		);
 	}
 }

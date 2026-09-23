@@ -1,6 +1,6 @@
 package br.insper.templatepi.validator;
 
-import br.insper.templatepi.dto.ItemRequest;
+import br.insper.templatepi.entity.Item;
 import br.insper.templatepi.entity.TipoItem;
 import br.insper.templatepi.exception.ValidacaoItemException;
 import org.springframework.stereotype.Component;
@@ -15,8 +15,8 @@ public class ValidadorItemDigital implements ValidadorItem {
 	}
 
 	@Override
-	public void validar(ItemRequest request) {
-		if (request.getUrlAcesso() == null || request.getUrlAcesso().isBlank()) {
+	public void validar(Item item) {
+		if (item.getUrlAcesso() == null || item.getUrlAcesso().isBlank()) {
 			throw new ValidacaoItemException("A URL de acesso é obrigatória para itens digitais");
 		}
 	}

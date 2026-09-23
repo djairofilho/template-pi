@@ -1,106 +1,78 @@
 package br.insper.templatepi.service;
 
-import br.insper.templatepi.dto.ItemRequest;
-import br.insper.templatepi.dto.ItemResponse;
-import br.insper.templatepi.dto.ProcessamentoItemResponse;
+import br.insper.templatepi.client.UsuarioClient;
 import br.insper.templatepi.entity.Item;
-import br.insper.templatepi.entity.StatusItem;
 import br.insper.templatepi.exception.ItemNaoEncontradoException;
 import br.insper.templatepi.observer.ItemObserver;
-import br.insper.templatepi.processor.ProcessadorItem;
-import br.insper.templatepi.processor.ProcessadorItemFactory;
 import br.insper.templatepi.repository.ItemRepository;
 import br.insper.templatepi.validator.ValidadorItem;
 import br.insper.templatepi.validator.ValidadorItemFactory;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
+import java.math.BigDecimal;
 import java.util.List;
 
 // TODO(PI): concentre nesta classe as regras de negócio específicas da prova.
 @Service
 public class ItemService {
 
+	private static final String EVENTO_CRIADO = "CRIADO";
+	private static final String EVENTO_EXCLUIDO = "EXCLUIDO";
+
 	private final ItemRepository itemRepository;
+	private final UsuarioClient usuarioClient;
 	private final ValidadorItemFactory validadorFactory;
-	private final ProcessadorItemFactory processadorFactory;
 	private final List<ItemObserver> observers;
 
 	public ItemService(
 			ItemRepository itemRepository,
+			UsuarioClient usuarioClient,
 			ValidadorItemFactory validadorFactory,
-			ProcessadorItemFactory processadorFactory,
 			List<ItemObserver> observers) {
 		this.itemRepository = itemRepository;
+		this.usuarioClient = usuarioClient;
 		this.validadorFactory = validadorFactory;
-		this.processadorFactory = processadorFactory;
 		this.observers = observers;
 	}
 
-	public ItemResponse criar(ItemRequest request) {
-		ValidadorItem validador = validadorFactory.obter(request.getTipo());
-		validador.validar(request);
-		Item item = new Item(
-				request.getNome().trim(),
-				request.getDescricao().trim(),
-				request.getTipo(),
-				request.getQuantidade(),
-				normalizarTextoOpcional(request.getUrlAcesso()),
-				request.getDuracaoMinutos()
-		);
+	public Item criar(Item item) {
+		ValidadorItem validador = validadorFactory.obter(item.getTipo());
+		validador.validar(item);
+
+		item.setId(null);
+		item.setNome(item.getNome().trim());
+		item.setClienteId(item.getClienteId().trim());
+		item.setUrlAcesso(normalizarTextoOpcional(item.getUrlAcesso()));
+		item.setEmailCliente(usuarioClient.buscarEmail(item.getClienteId()));
+		item.setValorTotal(calcularValorTotal(item));
+
 		Item salvo = itemRepository.save(item);
-		notificarObservadores(salvo, null);
-		return ItemResponse.fromEntity(salvo);
+		notificarObservadores(salvo, EVENTO_CRIADO);
+		return salvo;
 	}
 
-	public List<ItemResponse> listar(String nome) {
-		List<Item> itens;
-		if (nome == null || nome.isBlank()) {
-			itens = itemRepository.findByDeletadoFalseOrderByNomeAsc();
-		} else {
-			itens = itemRepository
-					.findByDeletadoFalseAndNomeStartingWithIgnoreCaseOrderByNomeAsc(nome.trim());
+	public List<Item> listar(String clienteId) {
+		if (clienteId == null || clienteId.isBlank()) {
+			return itemRepository.findAllByOrderByDataCriacaoDesc();
 		}
-
-		return itens.stream()
-				.map(ItemResponse::fromEntity)
-				.toList();
+		return itemRepository.findByClienteIdOrderByDataCriacaoDesc(clienteId.trim());
 	}
 
 	public void deletar(Long id) {
-		Item item = itemRepository.findByIdAndDeletadoFalse(id)
+		Item item = itemRepository.findById(id)
 				.orElseThrow(() -> new ItemNaoEncontradoException(id));
-		item.setDeletado(true);
-		itemRepository.save(item);
+		itemRepository.delete(item);
+		notificarObservadores(item, EVENTO_EXCLUIDO);
 	}
 
-	public ProcessamentoItemResponse processar(Long id) {
-		Item item = itemRepository.findByIdAndDeletadoFalse(id)
-				.orElseThrow(() -> new ItemNaoEncontradoException(id));
-		StatusItem statusAnterior = item.getStatus();
-		String mensagem;
-		boolean sucesso;
-
-		try {
-			ProcessadorItem processador = processadorFactory.obter(item.getTipo());
-			mensagem = processador.processar(item);
-			item.setStatus(StatusItem.PROCESSADO);
-			sucesso = true;
-		} catch (RuntimeException exception) {
-			mensagem = exception.getMessage();
-			item.setStatus(StatusItem.FALHA);
-			sucesso = false;
-		}
-
-		item.setDataProcessamento(LocalDateTime.now());
-		Item salvo = itemRepository.save(item);
-		notificarObservadores(salvo, statusAnterior);
-		return new ProcessamentoItemResponse(sucesso, mensagem, ItemResponse.fromEntity(salvo));
+	private BigDecimal calcularValorTotal(Item item) {
+		long quantidade = item.getQuantidade() == null ? 1L : item.getQuantidade();
+		return item.getPrecoUnitario().multiply(BigDecimal.valueOf(quantidade));
 	}
 
-	private void notificarObservadores(Item item, StatusItem statusAnterior) {
+	private void notificarObservadores(Item item, String evento) {
 		for (ItemObserver observer : observers) {
-			observer.atualizar(item, statusAnterior, item.getStatus());
+			observer.atualizar(item, evento);
 		}
 	}
 

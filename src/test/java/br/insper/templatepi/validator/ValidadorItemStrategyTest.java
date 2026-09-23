@@ -1,12 +1,14 @@
 package br.insper.templatepi.validator;
 
-import br.insper.templatepi.dto.ItemRequest;
+import br.insper.templatepi.entity.Item;
 import br.insper.templatepi.entity.TipoItem;
 import br.insper.templatepi.exception.ValidacaoItemException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
+
+import java.math.BigDecimal;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
@@ -29,16 +31,14 @@ class ValidadorItemStrategyTest {
 	@NullSource
 	@ValueSource(ints = {0, -1})
 	void deveExigirQuantidadePositivaParaItemFisico(Integer quantidade) {
-		ItemRequest request = request(TipoItem.FISICO, quantidade, null, null);
-
-		assertThatThrownBy(() -> fisico.validar(request))
+		assertThatThrownBy(() -> fisico.validar(item(TipoItem.FISICO, quantidade, null, null)))
 				.isInstanceOf(ValidacaoItemException.class)
 				.hasMessageContaining("quantidade");
 	}
 
 	@Test
 	void deveAceitarItemFisicoValido() {
-		assertThatCode(() -> fisico.validar(request(TipoItem.FISICO, 1, null, null)))
+		assertThatCode(() -> fisico.validar(item(TipoItem.FISICO, 1, null, null)))
 				.doesNotThrowAnyException();
 	}
 
@@ -46,9 +46,7 @@ class ValidadorItemStrategyTest {
 	@NullSource
 	@ValueSource(strings = {"", "   "})
 	void deveExigirUrlParaItemDigital(String url) {
-		ItemRequest request = request(TipoItem.DIGITAL, null, url, null);
-
-		assertThatThrownBy(() -> digital.validar(request))
+		assertThatThrownBy(() -> digital.validar(item(TipoItem.DIGITAL, null, url, null)))
 				.isInstanceOf(ValidacaoItemException.class)
 				.hasMessageContaining("URL");
 	}
@@ -56,7 +54,7 @@ class ValidadorItemStrategyTest {
 	@Test
 	void deveAceitarItemDigitalValido() {
 		assertThatCode(() -> digital.validar(
-				request(TipoItem.DIGITAL, null, "https://exemplo.com", null)))
+				item(TipoItem.DIGITAL, null, "https://exemplo.com", null)))
 				.doesNotThrowAnyException();
 	}
 
@@ -64,24 +62,26 @@ class ValidadorItemStrategyTest {
 	@NullSource
 	@ValueSource(ints = {0, -1})
 	void deveExigirDuracaoPositivaParaServico(Integer duracao) {
-		ItemRequest request = request(TipoItem.SERVICO, null, null, duracao);
-
-		assertThatThrownBy(() -> servico.validar(request))
+		assertThatThrownBy(() -> servico.validar(item(TipoItem.SERVICO, null, null, duracao)))
 				.isInstanceOf(ValidacaoItemException.class)
 				.hasMessageContaining("duração");
 	}
 
 	@Test
 	void deveAceitarServicoValido() {
-		assertThatCode(() -> servico.validar(request(TipoItem.SERVICO, null, null, 60)))
+		assertThatCode(() -> servico.validar(item(TipoItem.SERVICO, null, null, 60)))
 				.doesNotThrowAnyException();
 	}
 
-	private ItemRequest request(
-			TipoItem tipo,
-			Integer quantidade,
-			String url,
-			Integer duracao) {
-		return new ItemRequest("Nome", "Descrição", tipo, quantidade, url, duracao);
+	private Item item(TipoItem tipo, Integer quantidade, String url, Integer duracao) {
+		return new Item(
+				"Nome",
+				tipo,
+				"cliente-1",
+				quantidade,
+				url,
+				duracao,
+				BigDecimal.ONE
+		);
 	}
 }
