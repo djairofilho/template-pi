@@ -16,9 +16,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
-// TODO(PI): renomeie a rota e ajuste os verbos e códigos conforme o contrato.
 @RestController
-@RequestMapping("/itens")
+@RequestMapping("/avaliacoes")
 public class ItemController {
 
 	private final ItemService itemService;
