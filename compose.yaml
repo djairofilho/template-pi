@@ -21,7 +21,6 @@ services:
         max-file: "3"
 
   api:
-    # TODO(PI): configure DOCKER_IMAGE com o repositório usado na entrega.
     image: ${DOCKER_IMAGE}:${IMAGE_TAG:-latest}
     restart: unless-stopped
     depends_on:
@@ -32,7 +31,6 @@ services:
       DB_USERNAME: ${DB_USERNAME}
       DB_PASSWORD: ${DB_PASSWORD}
       DDL_AUTO: ${DDL_AUTO:-update}
-      USERS_API_URL: ${USERS_API_URL}
       JAVA_TOOL_OPTIONS: ${JAVA_TOOL_OPTIONS:--Xms128m -Xmx512m}
     ports:
       - "8080:8080"

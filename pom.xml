@@ -10,12 +10,11 @@
 		<relativePath/>
 	</parent>
 
-	<!-- TODO(PI): adapte groupId, artifactId, name e description ao enunciado. -->
 	<groupId>br.insper</groupId>
 	<artifactId>template-pi</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<name>template-pi</name>
-	<description>Template executável para a PI de Projeto de Software</description>
+	<name>sistema-avaliacoes</name>
+	<description>API REST para gerenciamento de avaliações</description>
 
 	<properties>
 		<java.version>25</java.version>
@@ -141,8 +140,7 @@
 								<rule>
 									<element>CLASS</element>
 									<includes>
-										<!-- TODO(PI): atualize a classe coberta ao renomear o serviço. -->
-										<include>br.insper.templatepi.service.ItemService</include>
+										<include>br.insper.templatepi.service.AvaliacaoService</include>
 									</includes>
 									<limits>
 										<limit>
