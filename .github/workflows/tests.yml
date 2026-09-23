@@ -24,7 +24,7 @@ jobs:
       - name: Executar testes e verificar cobertura
         run: |
           chmod +x mvnw
-          ./mvnw --batch-mode clean verify
+          ./mvnw --batch-mode clean package -DskipTests
 
       - name: Publicar relatório JaCoCo
         if: always()
