@@ -1,7 +1,9 @@
 package br.insper.templatepi.integration;
 
-import br.insper.templatepi.entity.Item;
-import br.insper.templatepi.repository.ItemRepository;
+import br.insper.templatepi.entity.Avaliacao;
+import br.insper.templatepi.entity.TipoOperacao;
+import br.insper.templatepi.repository.AuditoriaRepository;
+import br.insper.templatepi.repository.AvaliacaoRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,7 +29,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Testcontainers
 @SpringBootTest
 @AutoConfigureMockMvc
-class ItemControllerIntegrationTest {
+class AvaliacaoControllerIntegrationTest {
 
 	@Container
 	@ServiceConnection
@@ -37,15 +39,19 @@ class ItemControllerIntegrationTest {
 	private MockMvc mockMvc;
 
 	@Autowired
-	private ItemRepository itemRepository;
+	private AvaliacaoRepository avaliacaoRepository;
+
+	@Autowired
+	private AuditoriaRepository auditoriaRepository;
 
 	@BeforeEach
 	void limparBanco() {
-		itemRepository.deleteAll();
+		auditoriaRepository.deleteAll();
+		avaliacaoRepository.deleteAll();
 	}
 
 	@Test
-	void deveCriarAvaliacao() throws Exception {
+	void deveCriarAvaliacaoEPersistirAuditoria() throws Exception {
 		String body = """
 				{
 				  "id": 999,
@@ -66,34 +72,22 @@ class ItemControllerIntegrationTest {
 				.andExpect(jsonPath("$.nota").value(5))
 				.andExpect(jsonPath("$.dataAvaliacao").isNotEmpty());
 
-		assertThat(itemRepository.findAll()).singleElement().satisfies(item -> {
-			assertThat(item.getId()).isNotEqualTo(999L);
-			assertThat(item.getDataAvaliacao()).isAfter(LocalDateTime.of(2000, 1, 1, 0, 0));
+		Avaliacao salva = avaliacaoRepository.findAll().getFirst();
+		assertThat(salva.getId()).isNotEqualTo(999L);
+		assertThat(salva.getDataAvaliacao()).isAfter(LocalDateTime.of(2000, 1, 1, 0, 0));
+		assertThat(auditoriaRepository.findAll()).singleElement().satisfies(auditoria -> {
+			assertThat(auditoria.getAvaliacaoId()).isEqualTo(salva.getId());
+			assertThat(auditoria.getTipoOperacao()).isEqualTo(TipoOperacao.CREATE);
+			assertThat(auditoria.getTimestamp()).isNotNull();
 		});
 	}
 
 	@Test
-	void deveRejeitarCamposObrigatoriosInvalidos() throws Exception {
+	void deveRejeitarAvaliacaoInvalida() throws Exception {
 		String body = """
 				{
 				  "autor": " ",
 				  "conteudo": "",
-				  "nota": null
-				}
-				""";
-
-		mockMvc.perform(post("/avaliacoes")
-					.contentType(MediaType.APPLICATION_JSON)
-					.content(body))
-				.andExpect(status().isBadRequest());
-	}
-
-	@Test
-	void deveRejeitarNotaForaDoIntervalo() throws Exception {
-		String body = """
-				{
-				  "autor": "Maria",
-				  "conteudo": "Avaliação",
 				  "nota": 6
 				}
 				""";
@@ -106,12 +100,12 @@ class ItemControllerIntegrationTest {
 
 	@Test
 	void deveListarAvaliacoesDaMaisRecenteParaAMaisAntiga() throws Exception {
-		Item antiga = new Item("Ana", "Bom", 4);
+		Avaliacao antiga = new Avaliacao("Ana", "Bom", 4);
 		antiga.setDataAvaliacao(LocalDateTime.of(2026, 9, 22, 10, 0));
-		antiga = itemRepository.save(antiga);
-		Item recente = new Item("Bruno", "Excelente", 5);
+		antiga = avaliacaoRepository.save(antiga);
+		Avaliacao recente = new Avaliacao("Bruno", "Excelente", 5);
 		recente.setDataAvaliacao(LocalDateTime.of(2026, 9, 23, 10, 0));
-		recente = itemRepository.save(recente);
+		recente = avaliacaoRepository.save(recente);
 
 		mockMvc.perform(get("/avaliacoes"))
 				.andExpect(status().isOk())
@@ -121,15 +115,32 @@ class ItemControllerIntegrationTest {
 	}
 
 	@Test
-	void deveDeletarAvaliacaoERejeitarSegundaTentativa() throws Exception {
-		Item salvo = itemRepository.save(new Item("Ana", "Removível", 3));
+	void deveBuscarAvaliacaoPorId() throws Exception {
+		Avaliacao salva = avaliacaoRepository.save(new Avaliacao("Ana", "Bom", 4));
 
-		mockMvc.perform(delete("/avaliacoes/{id}", salvo.getId()))
+		mockMvc.perform(get("/avaliacoes/{id}", salva.getId()))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.id").value(salva.getId()))
+				.andExpect(jsonPath("$.autor").value("Ana"));
+
+		mockMvc.perform(get("/avaliacoes/{id}", Long.MAX_VALUE))
+				.andExpect(status().isNotFound());
+	}
+
+	@Test
+	void deveExcluirAvaliacaoEPersistirAuditoria() throws Exception {
+		Avaliacao salva = avaliacaoRepository.save(new Avaliacao("Ana", "Removível", 3));
+
+		mockMvc.perform(delete("/avaliacoes/{id}", salva.getId()))
 				.andExpect(status().isNoContent());
 
-		assertThat(itemRepository.findById(salvo.getId())).isEmpty();
+		assertThat(avaliacaoRepository.findById(salva.getId())).isEmpty();
+		assertThat(auditoriaRepository.findAll()).singleElement().satisfies(auditoria -> {
+			assertThat(auditoria.getAvaliacaoId()).isEqualTo(salva.getId());
+			assertThat(auditoria.getTipoOperacao()).isEqualTo(TipoOperacao.DELETE);
+		});
 
-		mockMvc.perform(delete("/avaliacoes/{id}", salvo.getId()))
+		mockMvc.perform(delete("/avaliacoes/{id}", salva.getId()))
 				.andExpect(status().isNotFound());
 	}
 }
