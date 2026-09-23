@@ -132,3 +132,6 @@ Na EC2, mantenha estes arquivos:
 
 O deploy usa somente a branch `main`. Não coloque senhas, tokens, chaves ou
 endereços reais no repositório.
+
+docker build -t seu_usuario/template-pi-api:latest .
+docker compose up -d

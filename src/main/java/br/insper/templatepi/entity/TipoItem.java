@@ -4,5 +4,4 @@ package br.insper.templatepi.entity;
 public enum TipoItem {
 	FISICO,
 	DIGITAL,
-	SERVICO
 }

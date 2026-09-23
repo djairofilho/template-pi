@@ -33,64 +33,38 @@ public class Item {
 	@JsonProperty(access = JsonProperty.Access.READ_ONLY)
 	private Long id;
 
-	@NotBlank(message = "O nome é obrigatório")
+	@NotBlank(message = "O autor é obrigatório")
 	@Column(nullable = false, length = 150)
-	private String nome;
+	private String autor;
 
-	@NotNull(message = "O tipo é obrigatório")
-	@Enumerated(EnumType.STRING)
-	@Column(nullable = false, length = 20)
-	private TipoItem tipo;
+	@NotBlank(message = "O autor é obrigatório")
+	@Column(nullable = false, length = 150)
+	private String conteudo;
 
-	@NotBlank(message = "O ID do cliente é obrigatório")
-	@Column(nullable = false, length = 100)
-	private String clienteId;
-
-	@JsonProperty(access = JsonProperty.Access.READ_ONLY)
-	@Column(nullable = false, length = 200)
-	private String emailCliente;
-
-	private Integer quantidade;
-
-	@Column(length = 500)
-	private String urlAcesso;
-
-	private Integer duracaoMinutos;
-
-	@NotNull(message = "O preço unitário é obrigatório")
-	@DecimalMin(value = "0.0", inclusive = false, message = "O preço unitário deve ser positivo")
-	@Column(nullable = false, precision = 19, scale = 2)
-	private BigDecimal precoUnitario;
-
-	@JsonProperty(access = JsonProperty.Access.READ_ONLY)
-	@Column(nullable = false, precision = 19, scale = 2)
-	private BigDecimal valorTotal;
+	@NotBlank(message = "A nota é obrigatório")
+	@Column(nullable = false, length = 150)
+	private Integer nota;
 
 	@JsonProperty(access = JsonProperty.Access.READ_ONLY)
 	@Column(nullable = false, updatable = false)
-	private LocalDateTime dataCriacao;
+	private LocalDateTime dataAvaliacao;
 
 	public Item(
-			String nome,
-			TipoItem tipo,
-			String clienteId,
-			Integer quantidade,
-			String urlAcesso,
-			Integer duracaoMinutos,
-			BigDecimal precoUnitario) {
-		this.nome = nome;
-		this.tipo = tipo;
-		this.clienteId = clienteId;
-		this.quantidade = quantidade;
-		this.urlAcesso = urlAcesso;
-		this.duracaoMinutos = duracaoMinutos;
-		this.precoUnitario = precoUnitario;
+			String autor,
+			String conteudo,
+			Integer nota,
+			LocalDateTime dataAvaliacao) {
+
+		this.autor = autor;
+		this.conteudo = conteudo;
+		this.nota = nota;
+
 	}
 
 	@PrePersist
-	void preencherDataCriacao() {
-		if (dataCriacao == null) {
-			dataCriacao = LocalDateTime.now();
+	void preencherDataAvaliacao() {
+		if (dataAvaliacao == null) {
+			dataAvaliacao = LocalDateTime.now();
 		}
 	}
 }
