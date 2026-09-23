@@ -30,21 +30,18 @@ public class ItemService {
 			ValidadorItemFactory validadorFactory,
 			List<ItemObserver> observers) {
 		this.itemRepository = itemRepository;
-		this.usuarioClient = usuarioClient;
-		this.validadorFactory = validadorFactory;
+		//this.validadorFactory = validadorFactory;
 		this.observers = observers;
 	}
 
 	public Item criar(Item item) {
-		ValidadorItem validador = validadorFactory.obter(item.getTipo());
-		validador.validar(item);
+		//ValidadorItem validador = validadorFactory.obter(item.getTipo());
+		//validador.validar(item);
 
 		item.setId(null);
-		item.setNome(item.getNome().trim());
-		item.setClienteId(item.getClienteId().trim());
-		item.setUrlAcesso(normalizarTextoOpcional(item.getUrlAcesso()));
-		item.setEmailCliente(usuarioClient.buscarEmail(item.getClienteId()));
-		item.setValorTotal(calcularValorTotal(item));
+		item.setAutor(item.getAutor().trim());
+		item.setConteudo(item.getConteudo().trim());
+		item.setNota(item.getNota());
 
 		Item salvo = itemRepository.save(item);
 		notificarObservadores(salvo, EVENTO_CRIADO);
@@ -52,10 +49,10 @@ public class ItemService {
 	}
 
 	public List<Item> listar(String clienteId) {
-		if (clienteId == null || clienteId.isBlank()) {
-			return itemRepository.findAllByOrderByDataCriacaoDesc();
-		}
-		return itemRepository.findByClienteIdOrderByDataCriacaoDesc(clienteId.trim());
+
+		return itemRepository.findAllByOrderByDataCriacaoDesc();
+
+		//return itemRepository.findByClienteIdOrderByDataCriacaoDesc(clienteId.trim());
 	}
 
 	public void deletar(Long id) {
@@ -63,11 +60,6 @@ public class ItemService {
 				.orElseThrow(() -> new ItemNaoEncontradoException(id));
 		itemRepository.delete(item);
 		notificarObservadores(item, EVENTO_EXCLUIDO);
-	}
-
-	private BigDecimal calcularValorTotal(Item item) {
-		long quantidade = item.getQuantidade() == null ? 1L : item.getQuantidade();
-		return item.getPrecoUnitario().multiply(BigDecimal.valueOf(quantidade));
 	}
 
 	private void notificarObservadores(Item item, String evento) {

@@ -12,5 +12,4 @@ public interface ItemRepository extends JpaRepository<Item, Long> {
 
 	List<Item> findAllByOrderByDataCriacaoDesc();
 
-	List<Item> findByClienteIdOrderByDataCriacaoDesc(String clienteId);
 }
